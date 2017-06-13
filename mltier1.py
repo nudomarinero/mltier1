@@ -16,12 +16,6 @@ def describe(var, decimals=3, nullvalue=-999):
                                np.nanmin(var), np.nanmax(var), len(var), 
                                np.sum(np.isnan(var)), len(var[var == nullvalue])))
 
-def get_center(bins):
-    """
-    Get the central positions for an array defining bins
-    """
-    return (bins[:-1] + bins[1:]) / 2
-
 ## Sky functions
 def ru2ra(x, ra1=0., ra2=360.):
     """Transform a random uniform number to a RA between
@@ -123,12 +117,39 @@ class Q_0(object):
     
 
 ## ML functions
-def get_n_m(magnitude, bins_list, area):
+def get_center(bins):
+    """
+    Get the central positions for an array defining bins
+    """
+    return (bins[:-1] + bins[1:]) / 2
+
+def get_n_m(magnitude, bin_list, area):
     """Compute n(m)
     Density of sources per unit of area
     """
-    n_hist, bins_hist = np.histogram(magnitude, bin_list)
+    n_hist, _ = np.histogram(magnitude, bin_list)
     return np.cumsum(n_hist)/area
+
+def estimate_q_m(magnitude, bin_list, n_m, coords_small, coords_big, radius=5):
+    """Compute q(m)
+    Estimation of the distribution of real matched sources with respect 
+    to a magnitude (normalized to 1). As explained in Fleuren et al.
+    """
+    assert len(magnitude) == len(coords_big)
+    # Cross match
+    idx_small, idx_big, d2d, d3d = search_around_sky(
+        coords_small, coords_big, radius*u.arcsec)
+    n_xm_small = len(np.unique(idx_small))
+    idx = np.unique(idx_big)
+    # Get the distribution of matched sources
+    n_hist_total, _ = np.histogram(magnitude[idx], bin_list)
+    # Estimate real(m)
+    real_m = n_hist_total - n_xm_small*n_m*np.pi*(radius/3600.)**2
+    # Remove small negative numbers
+    real_m[real_m <= 0.] = 0.
+    real_m_cumsum = np.cumsum(real_m)
+    return real_m_cumsum/real_m_cumsum[-1]
+    
 
 #idx_lofar_i, idx_combined_i, d2d_i, d3d_i = search_around_sky(
     #coords_lofar, 
