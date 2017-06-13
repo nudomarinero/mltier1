@@ -9,6 +9,7 @@ The dependencies are:
     * astropy
     * numpy
     * wquantiles
+    * pandas (used to estimate the i-band magnitude)
 
 ## Matching between PanSTARRS and WISE data
 
