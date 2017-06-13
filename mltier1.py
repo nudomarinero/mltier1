@@ -150,10 +150,3 @@ def estimate_q_m(magnitude, bin_list, n_m, coords_small, coords_big, radius=5):
     real_m_cumsum = np.cumsum(real_m)
     return real_m_cumsum/real_m_cumsum[-1]
     
-
-#idx_lofar_i, idx_combined_i, d2d_i, d3d_i = search_around_sky(
-    #coords_lofar, 
-    #coords_combined[combined_i], 
-    #5*u.arcsec)
-#n_xm_lofar_i = len(np.unique(idx_lofar_i))
-#n_hist_total_i, bins_hist_total_i = np.histogram(combined[combined_i][idx_i]["i"], bin_list_i)
