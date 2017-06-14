@@ -169,6 +169,18 @@ def get_n_m(magnitude, bin_list, area):
     n_hist, _ = np.histogram(magnitude, bin_list)
     return np.cumsum(n_hist)/area
 
+def get_q_m(magnitude, bin_list, n, n_m, area, radius=5):
+    """Compute q(m)
+    Normalized probability of a real match
+    """
+    n_hist_total, _ = np.histogram(magnitude, bin_list)
+    # Estimate real(m)
+    real_m = n_hist_total - n*n_m*np.pi*(radius/3600.)**2
+    # Remove small negative numbers
+    real_m[real_m <= 0.] = 0.
+    real_m_cumsum = np.cumsum(real_m)
+    return real_m_cumsum/real_m_cumsum[-1]
+
 def estimate_q_m(magnitude, bin_list, n_m, coords_small, coords_big, radius=5):
     """Compute q(m)
     Estimation of the distribution of real matched sources with respect 
@@ -217,6 +229,40 @@ class SingleMLEstimator(object):
         """Get the likelihood ratio"""
         return fr(r, sigma) * self.get_qm(m) / self.get_nm(m)
 
+class MultiMLEstimator(object):
+    """
+    Class to estimate the Maximum Likelihood ratio in a vectorized 
+    fashion.
+    """
+    def __init__(self, q0, n_m, q_m, center):
+        self.q0 = q0
+        self.n_m = n_m
+        self.q_m = q_m
+        self.center = center
+    
+    def get_qm(self, m, k):
+        """Get q(m)
+        """
+        return np.interp(m, self.center[k], self.q_m[k]*self.q0[k])
+
+    def get_nm(self, m, k):
+        """Get n(m)"""
+        return np.interp(m, self.center[k], self.n_m[k])
+    
+    def get_qm_vect(self, m, k):
+        """Get q(m) for a given category
+        """
+        return np.vectorize(self.get_qm)(m, k)
+
+    def get_nm_vect(self, m, k):
+        """Get n(m) for a given category
+        """
+        return np.vectorize(self.get_nm)(m, k)
+    
+    def __call__(self, m, r, sigma, k):
+        """Get the likelihood ratio"""
+        return fr(r, sigma) * self.get_qm_vect(m, k) / self.get_nm_vect(m, k)
+
 ## Multiprocessing functions
 def parallel_process(array, function, n_jobs=3, use_kwargs=False, front_num=3):
     """
@@ -259,8 +305,5 @@ def parallel_process(array, function, n_jobs=3, use_kwargs=False, front_num=3):
     out = []
     #Get the results from the futures. 
     for i, future in tqdm(enumerate(futures)):
-        try:
-            out.append(future.result())
-        except Exception as e:
-            out.append(e)
+        out.append(future.result())
     return front + out
