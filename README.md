@@ -39,4 +39,10 @@ is produced at the end.
 
 ## Matching between LOFAR sources and the combined catalogue
 
-TODO
+A Maximum Likelihood method is applied to LOFAR sources and sources
+in the combined WISE PanSTARRS catalogue.
+
+### Compute Q_0
+
+The Q_0 for the individual Gaussian catalogue are computed in this 
+[notebook](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_Q0_gaus.ipynb).

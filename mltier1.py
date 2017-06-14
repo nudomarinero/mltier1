@@ -2,6 +2,8 @@ import numpy as np
 from astropy.table import Table
 from astropy import units as u
 from astropy.coordinates import SkyCoord, search_around_sky
+from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 ## general functions
 def describe(var, decimals=3, nullvalue=-999):
@@ -115,6 +117,43 @@ class Q_0(object):
                                           
         return (1. - float(nomatch_small)/float(nomatch_random))
     
+## Error functions
+def get_sigma(maj_error, min_error, pos_angle, 
+              radio_ra, radio_dec, 
+              opt_ra, opt_dec, opt_ra_err, opt_dec_err, 
+              additonal_error=0.6):
+    """
+    Get the combined error between an elongated radio source and an 
+    optical source.
+    
+    Input:
+    * maj_error: error in the major axis of the radio Gaussian in arsecs
+    * min_error: error in the minor axis of the radio Gaussian in arsecs
+    * pos_angle: position angle of the radio Gaussian in degrees
+    * radio_ra: Right ascension of the radio source in degrees
+    * radio_dec: Declination of the radio source in degrees
+    * opt_ra: Right ascension of the optical source in degrees
+    * opt_dec: Declination of the optical source in degrees
+    * opt_ra_err: Error in right ascension of the optical source in degrees
+    * opt_dec_err: Error in declination of the optical source in degrees
+    * additonal_error: Additonal term to add to the error. By default
+        it adds an astrometic error of 0.6 arcsecs.
+    
+    Output:
+    * sigma: Combined error
+    """
+    factor = 0.60056120439322491 # sqrt(2.0) / sqrt(8.0 * log(2)); see Condon(1997) for derivation of adjustment factor
+    majerr = factor * maj_error
+    minerr = factor * min_error
+    cosadj = np.cos(np.deg2rad(0.5*(radio_dec + opt_dec)))
+    phi = np.arctan2((opt_dec - radio_dec), ((opt_ra - radio_ra)*cosadj))
+    # angle from direction of major axis to vector joining LOFAR source and optical source
+    sigma = np.pi/2.0 - phi - np.deg2rad(pos_angle) 
+    loferrsquared  = (majerr * np.cos(sigma))**2 + (minerr * np.sin(sigma))**2
+    opterrsquared  = (opt_ra_err * np.cos(phi))**2 + (opt_dec_err * np.sin(phi))**2
+    return np.sqrt(loferrsquared + opterrsquared + additonal_error**2)
+
+
 
 ## ML functions
 def get_center(bins):
@@ -149,4 +188,79 @@ def estimate_q_m(magnitude, bin_list, n_m, coords_small, coords_big, radius=5):
     real_m[real_m <= 0.] = 0.
     real_m_cumsum = np.cumsum(real_m)
     return real_m_cumsum/real_m_cumsum[-1]
+
+def fr(r, sigma):
+    """Get the probability related to the spatial distribution"""
+    s2 = sigma**2
+    return 0.5/np.pi/s2*np.exp(-0.5*r**2/s2)
+
+class SingleMLEstimator(object):
+    """
+    Class to estimate the Maximum Likelihood ratio
+    """
+    def __init__(self, q0, n_m, q_m, center):
+        self.q0 = q0
+        self.n_m = n_m
+        self.q_m = q_m
+        self.center = center
     
+    def get_qm(self, m):
+        """Get q(m)
+        """
+        return np.interp(m, self.center, self.q_m*self.q0)
+
+    def get_nm(self, m):
+        """Get n(m)"""
+        return np.interp(m, self.center, self.n_m)
+    
+    def __call__(self, m, r, sigma):
+        """Get the likelihood ratio"""
+        return fr(r, sigma) * self.get_qm(m) / self.get_nm(m)
+
+## Multiprocessing functions
+def parallel_process(array, function, n_jobs=3, use_kwargs=False, front_num=3):
+    """
+        A parallel version of the map function with a progress bar. 
+
+        Args:
+            array (array-like): An array to iterate over.
+            function (function): A python function to apply to the elements of array
+            n_jobs (int, default=16): The number of cores to use
+            use_kwargs (boolean, default=False): Whether to consider the elements of array as dictionaries of 
+                keyword arguments to function 
+            front_num (int, default=3): The number of iterations to run serially before kicking off the parallel job. 
+                Useful for catching bugs
+        Returns:
+            [function(array[0]), function(array[1]), ...]
+        see: http://danshiebler.com/2016-09-14-parallel-progress-bar/
+    """
+    #We run the first few iterations serially to catch bugs
+    if front_num > 0:
+        front = [function(**a) if use_kwargs else function(a) for a in array[:front_num]]
+    #If we set n_jobs to 1, just run a list comprehension. This is useful for benchmarking and debugging.
+    if n_jobs==1:
+        return front + [function(**a) if use_kwargs else function(a) for a in tqdm(array[front_num:])]
+    #Assemble the workers
+    with ProcessPoolExecutor(max_workers=n_jobs) as pool:
+        #Pass the elements of array into function
+        if use_kwargs:
+            futures = [pool.submit(function, **a) for a in array[front_num:]]
+        else:
+            futures = [pool.submit(function, a) for a in array[front_num:]]
+        kwargs = {
+            'total': len(futures),
+            'unit': 'it',
+            'unit_scale': True,
+            'leave': True
+        }
+        #Print out the progress as tasks complete
+        for f in tqdm(as_completed(futures), **kwargs):
+            pass
+    out = []
+    #Get the results from the futures. 
+    for i, future in tqdm(enumerate(futures)):
+        try:
+            out.append(future.result())
+        except Exception as e:
+            out.append(e)
+    return front + out
