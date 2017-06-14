@@ -5,11 +5,15 @@ Surveys Tier 1.
 
 **The software is currently under heavy development**
 
+The software requires Python 3.4 or higher to run the ML estimation in 
+parallel.
+
 The dependencies are:
-    * astropy
-    * numpy
-    * wquantiles
-    * pandas (used to estimate the i-band magnitude)
+* astropy
+* numpy
+* wquantiles
+* pandas (used to estimate the i-band magnitude)
+* tqdm
 
 ## Matching between PanSTARRS and WISE data
 
