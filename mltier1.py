@@ -175,6 +175,9 @@ def get_q_m(magnitude, bin_list, n, n_m, area, radius=5):
     Normalized probability of a real match
     """
     n_hist_total, _ = np.histogram(magnitude, bin_list)
+    # Correct probability if there are no sources
+    if len(magnitude) == 0:
+        n_hist_total = np.ones_like(n_hist_total)*0.5
     # Estimate real(m)
     real_m = n_hist_total - n*n_m*np.pi*(radius/3600.)**2
     # Remove small negative numbers
@@ -195,6 +198,9 @@ def estimate_q_m(magnitude, bin_list, n_m, coords_small, coords_big, radius=5):
     idx = np.unique(idx_big)
     # Get the distribution of matched sources
     n_hist_total, _ = np.histogram(magnitude[idx], bin_list)
+    # Correct probability if there are no sources
+    if len(magnitude[idx]) == 0:
+        n_hist_total = np.ones_like(n_hist_total)*0.5
     # Estimate real(m)
     real_m = n_hist_total - n_xm_small*n_m*np.pi*(radius/3600.)**2
     # Remove small negative numbers
@@ -263,6 +269,24 @@ class MultiMLEstimator(object):
     def __call__(self, m, r, sigma, k):
         """Get the likelihood ratio"""
         return fr(r, sigma) * self.get_qm_vect(m, k) / self.get_nm_vect(m, k)
+
+def q0_min_level(q_0_list, min_level=0.001):
+    """Ensures that the minimum value of the Q_0 for each bin is always 
+    above a minimum threshold
+    """
+    q_0 = np.array(q_0_list)
+    q_0[q_0 < min_level] = min_level
+    return q_0
+
+def q0_min_numbers(q_0_list, numbers_combined_bins):
+    """Ensures that the minimum value of the Q_0 for each bin is always 
+    above a minimum threshold that depends on the number of sources
+    in each bin.
+    """
+    q_0 = np.array(q_0_list)
+    thresholds = 1./numbers_combined_bins
+    q_0[q_0 < thresholds] = thresholds[q_0 < thresholds]
+    return q_0
 
 def get_threshold(lr_dist, n_bins=200, n_gal_cut=1000):
     """Get the threshold as the position of the first minima in

@@ -50,3 +50,18 @@ in the combined WISE PanSTARRS catalogue.
 
 The Q_0 for the individual Gaussian catalogue are computed in this 
 [notebook](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_Q0_gaus.ipynb).
+
+### ML matching
+
+The ML matching is shown in:
+[notebook](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined.ipynb).
+
+The matching can be applied to the Gaussians catalogue. However, given 
+that the number of real sources mathced would be lower in this case, 
+the iterative approach is not applied. The notebooks are:
+* Run the ML: [notebook](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined_gaus.ipynb)
+* Save the final data: [notebook](https://github.com/nudomarinero/mltier1/blob/master/Save_gaus.ipynb)
+
+TODO:
+* Use Parallel processing in PanSTARRS - WISE match
+* Store the data in directories
