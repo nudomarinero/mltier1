@@ -4,6 +4,7 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord, search_around_sky
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from scipy.signal import savgol_filter
 
 ## general functions
 def describe(var, decimals=3, nullvalue=-999):
@@ -262,6 +263,19 @@ class MultiMLEstimator(object):
     def __call__(self, m, r, sigma, k):
         """Get the likelihood ratio"""
         return fr(r, sigma) * self.get_qm_vect(m, k) / self.get_nm_vect(m, k)
+
+def get_threshold(lr_dist, n_bins=200, n_gal_cut=1000):
+    """Get the threshold as the position of the first minima in
+    the LR distribution in log space"""
+    val, bins = np.histogram(np.log10(lr_dist + 1), bins=200)
+    if n_gal_cut is not None:
+        val[val >= n_gal_cut] = n_gal_cut
+    v1 = savgol_filter(val, 31, 3)
+    g1 = np.gradient(v1) # Firt derivative
+    g2 = np.gradient(g1) # Second derivative
+    center = get_center(bins)
+    t_value = 10**(center[np.argmax(g2 < 0)])-1
+    return t_value
 
 ## Multiprocessing functions
 def parallel_process(array, function, n_jobs=3, use_kwargs=False, front_num=3):
