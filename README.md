@@ -14,6 +14,7 @@ The dependencies are:
 * wquantiles
 * pandas (used to estimate the i-band magnitude)
 * tqdm
+* scipy (optional; used in some likelihood ratio threshold methods)
 
 ## Matching between PanSTARRS and WISE data
 
@@ -63,5 +64,6 @@ the iterative approach is not applied. The notebooks are:
 * Save the final data: [notebook](https://github.com/nudomarinero/mltier1/blob/master/Save_gaus.ipynb)
 
 TODO:
+* Get information for high ML sources not matched
 * Use Parallel processing in PanSTARRS - WISE match
 * Store the data in directories

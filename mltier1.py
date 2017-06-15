@@ -4,7 +4,6 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord, search_around_sky
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from scipy.signal import savgol_filter
 
 ## general functions
 def describe(var, decimals=3, nullvalue=-999):
@@ -291,6 +290,7 @@ def q0_min_numbers(q_0_list, numbers_combined_bins):
 def get_threshold(lr_dist, n_bins=200, n_gal_cut=1000):
     """Get the threshold as the position of the first minima in
     the LR distribution in log space"""
+    from scipy.signal import savgol_filter
     val, bins = np.histogram(np.log10(lr_dist + 1), bins=200)
     if n_gal_cut is not None:
         val[val >= n_gal_cut] = n_gal_cut
