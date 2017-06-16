@@ -21,7 +21,7 @@ The dependencies are:
 ### WISE data
 
 We selected the AllWISE Source Catalog 
-[catalogue](http://irsa.ipac.caltech.edu/cgi-bin/Gator/nph-dd?catalog=allwise_p3as_psd&mode=html&passproj&)
+[catalogue](http://irsa.ipac.caltech.edu/cgi-bin/Gator/nph-dd?catalog=allwise_p3as_psd&mode=html)
 
 All sky query is selected and the constrains in __ra__ and __dec__ are included.
 
@@ -56,6 +56,8 @@ The Q_0 for the individual Gaussian catalogue are computed in this
 
 The ML matching is shown in:
 [notebook](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined.ipynb).
+And a notebook to output the matched catalogue is in:
+[notebook](https://github.com/nudomarinero/mltier1/blob/master/Save_main.ipynb)
 
 The matching can be applied to the Gaussians catalogue. However, given 
 that the number of real sources mathced would be lower in this case, 
@@ -63,7 +65,14 @@ the iterative approach is not applied. The notebooks are:
 * Run the ML: [notebook](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined_gaus.ipynb)
 * Save the final data: [notebook](https://github.com/nudomarinero/mltier1/blob/master/Save_gaus.ipynb)
 
-TODO:
+## Scripts
+
+There are also scripts to automatically generate the matched catalogues.
+These scripts are uploaded once the pipeline is stable enough to not to 
+require many future updates.
+
+## TODO
+
 * Get information for high ML sources not matched
 * Use Parallel processing in PanSTARRS - WISE match
 * Store the data in directories
