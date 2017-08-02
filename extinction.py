@@ -2,7 +2,8 @@ from __future__ import print_function
 import json
 import requests
 import numpy as np
-from astropy.utils.console import ProgressBar
+from tqdm import tqdm, trange
+#from astropy.utils.console import ProgressBar
 from scipy.interpolate import CubicSpline
 from astropy.table import Table
 from astropy import units as u
@@ -115,15 +116,13 @@ def get_eb_v(ra, dec, subsize=450000):
     eb_v = np.zeros(len(ra))
     nsteps = int(len(ra)/subsize)+1
 
-    with ProgressBar(nsteps, ipython_widget=True) as bar:
-        for i in range(nsteps):
-            ra_sub = ra[i*subsize:(i+1)*subsize]
-            dec_sub = dec[i*subsize:(i+1)*subsize]
+    for i in trange(nsteps):
+        ra_sub = ra[i*subsize:(i+1)*subsize]
+        dec_sub = dec[i*subsize:(i+1)*subsize]
 
-            qresult2 = query(ra_sub, dec_sub, coordsys='equ', mode='sfd')
+        qresult2 = query(ra_sub, dec_sub, coordsys='equ', mode='sfd')
 
-            eb_v[i*subsize:(i+1)*subsize] = qresult2['EBV_SFD']
-            bar.update()
+        eb_v[i*subsize:(i+1)*subsize] = qresult2['EBV_SFD']
     return eb_v
 
 def get_filter_extinction(filter_URI):
