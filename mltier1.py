@@ -2,7 +2,7 @@ import numpy as np
 from astropy.table import Table
 from astropy import units as u
 from astropy.coordinates import SkyCoord, search_around_sky
-from tqdm import tqdm
+from tqdm import tqdm, tnrange, tqdm_notebook
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 ## general functions
@@ -302,7 +302,7 @@ def get_threshold(lr_dist, n_bins=200, n_gal_cut=1000):
     return t_value
 
 ## Multiprocessing functions
-def parallel_process(array, function, n_jobs=3, use_kwargs=False, front_num=3):
+def parallel_process(array, function, n_jobs=3, use_kwargs=False, front_num=3, notebook=False):
     """
         A parallel version of the map function with a progress bar. 
 
@@ -318,12 +318,16 @@ def parallel_process(array, function, n_jobs=3, use_kwargs=False, front_num=3):
             [function(array[0]), function(array[1]), ...]
         see: http://danshiebler.com/2016-09-14-parallel-progress-bar/
     """
+    if notebook:
+        tqdm_f = tqdm_notebook
+    else:
+        tqdm_f = tqdm
     #We run the first few iterations serially to catch bugs
     if front_num > 0:
         front = [function(**a) if use_kwargs else function(a) for a in array[:front_num]]
     #If we set n_jobs to 1, just run a list comprehension. This is useful for benchmarking and debugging.
     if n_jobs==1:
-        return front + [function(**a) if use_kwargs else function(a) for a in tqdm(array[front_num:])]
+        return front + [function(**a) if use_kwargs else function(a) for a in tqdm_f(array[front_num:])]
     #Assemble the workers
     with ProcessPoolExecutor(max_workers=n_jobs) as pool:
         #Pass the elements of array into function
@@ -338,10 +342,10 @@ def parallel_process(array, function, n_jobs=3, use_kwargs=False, front_num=3):
             'leave': True
         }
         #Print out the progress as tasks complete
-        for f in tqdm(as_completed(futures), **kwargs):
+        for f in tqdm_f(as_completed(futures), **kwargs):
             pass
     out = []
     #Get the results from the futures. 
-    for i, future in tqdm(enumerate(futures)):
+    for i, future in enumerate(tqdm_f(futures)):
         out.append(future.result())
     return front + out
