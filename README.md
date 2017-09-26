@@ -46,7 +46,7 @@ is produced at the end.
 
 ## Matching between LOFAR sources and the combined catalogue
 
-A Maximum Likelihood (ML) method is applied to LOFAR sources and sources
+A Maximum Likelihood method is also applied to LOFAR sources and sources
 in the combined WISE-PanSTARRS catalogue.
 
 Before applying the ML matching we corrected an error in the format of the pw 
@@ -54,7 +54,7 @@ catalogue with this [notebook](https://github.com/nudomarinero/mltier1/blob/mast
 
 ### Compute Q_0 and intermediate parameters
 
-The Q_0 for the individual Gaussian catalogue are computed in this 
+The $Q_0$ for the individual Gaussian catalogue are computed in this 
 [notebook](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_Q0_gaus.ipynb).
 
 The output of this notebook 
@@ -86,6 +86,7 @@ notebooks:
 * [final](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined_final-extended.ipynb)
 * [generic (gaus catalogue)](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined_generic-extended.ipynb)
 * [avobe threshold](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined_above-threshold-extended.ipynb)
+
 The output catalogues can then be combined toghether.
 
 There are a couple of obsolete notebooks that are no longer used:
