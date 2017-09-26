@@ -3,10 +3,9 @@
 Multiwavelength cross-match and maximum likelihood for the LOFAR 
 Surveys Tier 1.
 
-**The software is currently under heavy development**
-
 The software requires Python 3.4 or higher to run the ML estimation in 
-parallel.
+parallel. Please notice that running the code in big datasets requires a
+considerable amount of memory.
 
 The dependencies are:
 * astropy
@@ -29,50 +28,75 @@ All sky query is selected and the constrains in __ra__ and __dec__ are included.
 
 We use the DR1 of PanSTARRS and download the data using the CasJobs interface.
 
+The query used for the Tier 1 region is in: [query](https://github.com/nudomarinero/mltier1/blob/master/panstarrs_query.md)
+
 ### ML matching
 
 The data PanSTARRS and WISE are matched using a Maximum Likelihood (ML) method.
 
 The steps are the following:
 - Filtering of the catalogues: [notebook](https://github.com/nudomarinero/mltier1/blob/master/PanSTARRS_WISE_catalogues.ipynb)
+- Correct the reddening: [notebook](https://github.com/nudomarinero/mltier1/blob/master/PanSTARRS_WISE_reddening.ipynb)
 - Computing of Q0: [notebook](https://github.com/nudomarinero/mltier1/blob/master/PanSTARRS_WISE_Q0.ipynb)
 - Estimation of the ML parameters: [notebook](https://github.com/nudomarinero/mltier1/blob/master/PanSTARRS_WISE_pre_ml.ipynb)
 - Application of the ML matching: [notebook](https://github.com/nudomarinero/mltier1/blob/master/PanSTARRS_WISE_ML.ipynb)
 
-A final catalogue with all the sources (matched and non-matched) called pw.fits 
+A final catalogue with all the sources (matched and non-matched) called ```pw.fits``` 
 is produced at the end. 
 
 ## Matching between LOFAR sources and the combined catalogue
 
-A Maximum Likelihood method is applied to LOFAR sources and sources
-in the combined WISE PanSTARRS catalogue.
+A Maximum Likelihood (ML) method is applied to LOFAR sources and sources
+in the combined WISE-PanSTARRS catalogue.
 
-### Compute Q_0
+Before applying the ML matching we corrected an error in the format of the pw 
+catalogue with this [notebook](https://github.com/nudomarinero/mltier1/blob/master/Correct_pw_catalogue.ipynb) 
+
+### Compute Q_0 and intermediate parameters
 
 The Q_0 for the individual Gaussian catalogue are computed in this 
 [notebook](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_Q0_gaus.ipynb).
 
+The output of this notebook 
+([lofar_params.pckl](https://github.com/nudomarinero/mltier1/blob/master/lofar_params.pckl)) 
+is used as the input for the ML matching notebooks. 
+
+We discarded the extended sources with a major axis bigger than 30 arcseconds to 
+compute the parameters.
+
 ### ML matching
 
 The ML matching is shown in:
-[notebook](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined.ipynb).
-And a notebook to output the matched catalogue is in:
-[notebook](https://github.com/nudomarinero/mltier1/blob/master/Save_main.ipynb)
+[notebook](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined_final.ipynb).
 
-The matching can be applied to the Gaussians catalogue. However, given 
-that the number of real sources mathced would be lower in this case, 
-the iterative approach is not applied. The notebooks are:
-* Run the ML: [notebook](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined_gaus.ipynb)
-* Save the final data: [notebook](https://github.com/nudomarinero/mltier1/blob/master/Save_gaus.ipynb)
+The matching can be applied to any input catalogue. We applied it to the Gaussians catalogue in:
+[notebook](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined_generic.ipynb).
+This notebook can be used to match to other catalogues as well.
+
+There is also a version that saves all the matches avobe the selected ML threshold.
+In this case, if a source is matched by two or more WISE-PanSTARRS sources with 
+a ML above the threshold, all the matches are saved:
+[notebook](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined_above-threshold.ipynb).
+
+#### Auxiliary code
+
+Due to an error we run the ML matching notebooks only for non-extended sources.
+For completitude we also run the matching in extended sources in the corresponding
+notebooks:
+* [final](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined_final-extended.ipynb)
+* [generic (gaus catalogue)](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined_generic-extended.ipynb)
+* [avobe threshold](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined_above-threshold-extended.ipynb)
+The output catalogues can then be combined toghether.
+
+There are a couple of obsolete notebooks that are no longer used:
+* [Save_main.ipynb](https://github.com/nudomarinero/mltier1/blob/master/Save_main.ipynb)
+* [Save_gaus.ipynb](https://github.com/nudomarinero/mltier1/blob/master/Save_gaus.ipynb)
+
+The main auxiliary code used by the ML estimators is in ```mltier1.py```
 
 ## Scripts
 
-There are also scripts to automatically generate the matched catalogues.
-These scripts are uploaded once the pipeline is stable enough to not to 
-require many future updates.
+There are also scripts to automatically generate the matched catalogues but at 
+the moment they are not up to date.
 
-## TODO
 
-* Get information for high ML sources not matched
-* Use Parallel processing in PanSTARRS - WISE match
-* Store the data in directories
