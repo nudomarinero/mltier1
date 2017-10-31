@@ -54,12 +54,19 @@ catalogue with this [notebook](https://github.com/nudomarinero/mltier1/blob/mast
 
 ### Compute Q_0 and intermediate parameters
 
-The $Q_0$ for the individual Gaussian catalogue are computed in this 
-[notebook](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_Q0_gaus.ipynb).
+The $Q_0$ for the catalogue is computed in this 
+[notebook](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_Q0.ipynb).
 
-The output of this notebook 
-([lofar_params.pckl](https://github.com/nudomarinero/mltier1/blob/master/lofar_params.pckl)) 
-is used as the input for the ML matching notebooks. 
+The output of the notebook 
+[lofar_params.pckl](https://github.com/nudomarinero/mltier1/blob/master/lofar_params.pckl)
+is used as the initial input for the notebook [Match_LOFAR_combined-iteration.ipynb](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined-iteration.ipynb). 
+In this last notebook the ML paremeters 
+are adjusted iteratively until they converge (currently in 5 iterations). 
+The output of this notebook is located in the directory idata/main. The 
+lofar_params_<n>.pckl (being "n" the number of the last iteration and the 
+bigger number found in the directory) should be manually moved to the main 
+directory and renamed to "lofar_params.pckl". This will be the parameters 
+used for the ML matching notebooks. 
 
 We discarded the extended sources with a major axis bigger than 30 arcseconds to 
 compute the parameters.
@@ -95,9 +102,16 @@ There are a couple of obsolete notebooks that are no longer used:
 
 The main auxiliary code used by the ML estimators is in ```mltier1.py```
 
-## Scripts
+## Automatic execution
 
-There are also scripts to automatically generate the matched catalogues but at 
-the moment they are not up to date.
+It is possible to execute automatically the notebooks without the need of
+a browser. This is very useful for the automated execution of pipelines or
+for the running of heavy computations (some of the notebooks take several 
+hours or even days to run). To run automatically a notebook you can use:
+
+```
+
+```
+
 
 
