@@ -212,6 +212,12 @@ def fr(r, sigma):
     s2 = sigma**2
     return 0.5/np.pi/s2*np.exp(-0.5*r**2/s2)
 
+def fr_u(r, sigma, sigma_maj, sigma_min):
+    """Get the probability related to the spatial distribution.
+    UPDATED TO NEW FORMULA. MERGE LATER."""
+
+    return 0.5/np.pi/sigma_maj/sigma_min*np.exp(-0.5*r**2/(sigma**2))
+
 class SingleMLEstimator(object):
     """
     Class to estimate the Maximum Likelihood ratio
@@ -234,6 +240,30 @@ class SingleMLEstimator(object):
     def __call__(self, m, r, sigma):
         """Get the likelihood ratio"""
         return fr(r, sigma) * self.get_qm(m) / self.get_nm(m)
+
+class SingleMLEstimatorU(object):
+    """
+    Class to estimate the Maximum Likelihood ratio.
+    UPDATED TO NEW FORMULA. MERGE LATER.
+    """
+    def __init__(self, q0, n_m, q_m, center):
+        self.q0 = q0
+        self.n_m = n_m
+        self.q_m = q_m
+        self.center = center
+    
+    def get_qm(self, m):
+        """Get q(m)
+        """
+        return np.interp(m, self.center, self.q_m*self.q0)
+
+    def get_nm(self, m):
+        """Get n(m)"""
+        return np.interp(m, self.center, self.n_m)
+    
+    def __call__(self, m, r, sigma, sigma_maj, sigma_min):
+        """Get the likelihood ratio"""
+        return fr_u(r, sigma, sigma_maj, sigma_min) * self.get_qm(m) / self.get_nm(m)
 
 class MultiMLEstimator(object):
     """
@@ -268,6 +298,41 @@ class MultiMLEstimator(object):
     def __call__(self, m, r, sigma, k):
         """Get the likelihood ratio"""
         return fr(r, sigma) * self.get_qm_vect(m, k) / self.get_nm_vect(m, k)
+
+class MultiMLEstimatorU(object):
+    """
+    Class to estimate the Maximum Likelihood ratio in a vectorized 
+    fashion.
+    UPDATED TO NEW FORMULA. MERGE LATER.
+    """
+    def __init__(self, q0, n_m, q_m, center):
+        self.q0 = q0
+        self.n_m = n_m
+        self.q_m = q_m
+        self.center = center
+    
+    def get_qm(self, m, k):
+        """Get q(m)
+        """
+        return np.interp(m, self.center[k], self.q_m[k]*self.q0[k])
+
+    def get_nm(self, m, k):
+        """Get n(m)"""
+        return np.interp(m, self.center[k], self.n_m[k])
+    
+    def get_qm_vect(self, m, k):
+        """Get q(m) for a given category
+        """
+        return np.vectorize(self.get_qm)(m, k)
+
+    def get_nm_vect(self, m, k):
+        """Get n(m) for a given category
+        """
+        return np.vectorize(self.get_nm)(m, k)
+    
+    def __call__(self, m, r, sigma, k):
+        """Get the likelihood ratio"""
+        return fr_u(r, sigma, sigma_maj, sigma_min) * self.get_qm_vect(m, k) / self.get_nm_vect(m, k)
 
 def q0_min_level(q_0_list, min_level=0.001):
     """Ensures that the minimum value of the Q_0 for each bin is always 
