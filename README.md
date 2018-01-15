@@ -87,15 +87,6 @@ a ML above the threshold, all the matches are saved:
 
 #### Auxiliary code
 
-Due to an error we run the ML matching notebooks only for non-extended sources.
-For completitude we also run the matching in extended sources in the corresponding
-notebooks:
-* [final](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined_final-extended.ipynb)
-* [generic (gaus catalogue)](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined_generic-extended.ipynb)
-* [avobe threshold](https://github.com/nudomarinero/mltier1/blob/master/Match_LOFAR_combined_above-threshold-extended.ipynb)
-
-The output catalogues can then be combined toghether.
-
 There are a couple of obsolete notebooks that are no longer used:
 * [Save_main.ipynb](https://github.com/nudomarinero/mltier1/blob/master/Save_main.ipynb)
 * [Save_gaus.ipynb](https://github.com/nudomarinero/mltier1/blob/master/Save_gaus.ipynb)
@@ -110,8 +101,12 @@ for the running of heavy computations (some of the notebooks take several
 hours or even days to run). To run automatically a notebook you can use:
 
 ```
-
+jupyter nbconvert --to notebook \\
+--ExecutePreprocessor.timeout=6000 \\
+--kernel_name python3 \\
+--execute PanSTARRS_WISE_reddening.ipynb
 ```
+adapting the kernel name and timeout.
 
 
 
