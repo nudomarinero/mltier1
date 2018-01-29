@@ -153,7 +153,49 @@ def get_sigma(maj_error, min_error, pos_angle,
     opterrsquared  = (opt_ra_err * np.cos(phi))**2 + (opt_dec_err * np.sin(phi))**2
     return np.sqrt(loferrsquared + opterrsquared + additonal_error**2)
 
-
+def get_sigma_all(maj_error, min_error, pos_angle, 
+              radio_ra, radio_dec, 
+              opt_ra, opt_dec, opt_ra_err, opt_dec_err, 
+              additonal_error=0.6):
+    """
+    Get the combined error and the axes components between an elongated 
+    radio source and an optical source.
+    
+    Input:
+    * maj_error: error in the major axis of the radio Gaussian in arsecs
+    * min_error: error in the minor axis of the radio Gaussian in arsecs
+    * pos_angle: position angle of the radio Gaussian in degrees
+    * radio_ra: Right ascension of the radio source in degrees
+    * radio_dec: Declination of the radio source in degrees
+    * opt_ra: Right ascension of the optical source in degrees
+    * opt_dec: Declination of the optical source in degrees
+    * opt_ra_err: Error in right ascension of the optical source in degrees
+    * opt_dec_err: Error in declination of the optical source in degrees
+    * additonal_error: Additonal term to add to the error. By default
+        it adds an astrometic error of 0.6 arcsecs.
+    
+    Output:
+    * sigma: Combined error
+    * sigma_maj: Error in the major axis direction
+    * sigma_min: Error in the minor axis direction
+    """
+    factor = 0.60056120439322491 # sqrt(2.0) / sqrt(8.0 * log(2)); see Condon(1997) for derivation of adjustment factor
+    majerr = factor * maj_error
+    #minerr = factor * min_error
+    cosadj = np.cos(np.deg2rad(0.5*(radio_dec + opt_dec)))
+    phi = np.arctan2((opt_dec - radio_dec), ((opt_ra - radio_ra)*cosadj))
+    # angle from direction of major axis to vector joining LOFAR source and optical source
+    sigma = np.pi/2.0 - phi - np.deg2rad(pos_angle) 
+    
+    maj_squared = ((majerr * np.cos(sigma))**2 + 
+                   (opt_ra_err * np.cos(phi))**2 +
+                   additonal_error**2/2.
+                   )
+    min_squared = ((minerr * np.sin(sigma))**2 + 
+                   (opt_dec_err * np.sin(phi))**2 +
+                   additonal_error**2/2.
+                   )
+    return np.sqrt(maj_squared + min_squared), np.sqrt(maj_squared), np.sqrt(min_squared)
 
 ## ML functions
 def get_center(bins):
