@@ -372,7 +372,7 @@ class MultiMLEstimatorU(object):
         """
         return np.vectorize(self.get_nm)(m, k)
     
-    def __call__(self, m, r, sigma, k):
+    def __call__(self, m, r, sigma, sigma_maj, sigma_min, k):
         """Get the likelihood ratio"""
         return fr_u(r, sigma, sigma_maj, sigma_min) * self.get_qm_vect(m, k) / self.get_nm_vect(m, k)
 
