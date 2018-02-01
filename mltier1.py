@@ -181,7 +181,7 @@ def get_sigma_all(maj_error, min_error, pos_angle,
     """
     factor = 0.60056120439322491 # sqrt(2.0) / sqrt(8.0 * log(2)); see Condon(1997) for derivation of adjustment factor
     majerr = factor * maj_error
-    #minerr = factor * min_error
+    minerr = factor * min_error
     cosadj = np.cos(np.deg2rad(0.5*(radio_dec + opt_dec)))
     phi = np.arctan2((opt_dec - radio_dec), ((opt_ra - radio_ra)*cosadj))
     # angle from direction of major axis to vector joining LOFAR source and optical source
