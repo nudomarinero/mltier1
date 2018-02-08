@@ -220,7 +220,7 @@ def get_q_m(magnitude, bin_list, n, n_m, area, radius=5):
     if len(magnitude) == 0:
         n_hist_total = np.ones_like(n_hist_total)*0.5
     # Estimate real(m)
-    real_m = n_hist_total - n*n_m*np.pi*(radius/3600.)**2
+    real_m = n_hist_total
     # Remove small negative numbers
     real_m[real_m <= 0.] = 0.
     real_m_cumsum = np.cumsum(real_m)
