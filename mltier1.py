@@ -4,6 +4,8 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord, search_around_sky
 from tqdm import tqdm, tnrange, tqdm_notebook
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from sklearn.neighbors import KernelDensity
+
 
 ## general functions
 def describe(var, decimals=3, nullvalue=-999):
@@ -211,6 +213,18 @@ def get_n_m(magnitude, bin_list, area):
     n_hist, _ = np.histogram(magnitude, bin_list)
     return np.cumsum(n_hist)/area
 
+def get_n_m_kde(magnitude, bin_centre, area, bandwidth=0.2):
+    """Compute n(m)
+    Density of sources per unit of area in a non-cumulative
+    fashion using a KDE.
+    For this function we need the centre of the bins instead 
+    of the edges.
+    """
+    kde_skl = KernelDensity(bandwidth=bandwidth)
+    kde_skl.fit(magnitude[:, np.newaxis])
+    pdf = np.exp(kde_skl.score_samples(bin_centre[:, np.newaxis]))
+    return pdf/area*len(magnitude)/np.sum(pdf)
+
 def get_q_m(magnitude, bin_list, n, n_m, area, radius=5):
     """Compute q(m)
     Normalized probability of a real match
@@ -225,6 +239,26 @@ def get_q_m(magnitude, bin_list, n, n_m, area, radius=5):
     real_m[real_m <= 0.] = 0.
     real_m_cumsum = np.cumsum(real_m)
     return real_m_cumsum/real_m_cumsum[-1]
+
+def get_q_m_kde(magnitude, bin_centre, radius=5, bandwidth=0.2):
+    """Compute q(m)
+    Normalized probability of a real match in a 
+    non-cumulative fashion using a KDE.
+    For this function we need the centre of the bins instead 
+    of the edges.
+    """
+    # Get real(m)
+    kde_skl = KernelDensity(bandwidth=bandwidth)
+    kde_skl.fit(magnitude[:, np.newaxis])
+    pdf_q_m = np.exp(kde_skl.score_samples(bin_centre[:, np.newaxis]))
+    real_m = pdf_q_m*len(magnitude)/np.sum(pdf_q_m)
+    # Correct probability if there are no sources
+    if len(magnitude) == 0:
+        real_m = np.ones_like(n_hist_total)*0.5
+    # Remove small negative numbers
+    real_m[real_m <= 0.] = 0.
+    return real_m/np.sum(real_m)
+
 
 def estimate_q_m(magnitude, bin_list, n_m, coords_small, coords_big, radius=5):
     """Compute q(m)
@@ -248,6 +282,34 @@ def estimate_q_m(magnitude, bin_list, n_m, coords_small, coords_big, radius=5):
     real_m[real_m <= 0.] = 0.
     real_m_cumsum = np.cumsum(real_m)
     return real_m_cumsum/real_m_cumsum[-1]
+
+def estimate_q_m_kde(magnitude, bin_centre, n_m, coords_small, coords_big, radius=5, bandwidth=0.2):
+    """Compute q(m)
+    Estimation of the distribution of real matched sources with respect 
+    to a magnitude (normalized to 1). As explained in Fleuren et al. in a 
+    non-cumulative fashion using a KDE.
+    For this function we need the centre of the bins instead 
+    of the edges.
+    """
+    assert len(magnitude) == len(coords_big)
+    # Cross match
+    idx_small, idx_big, d2d, d3d = search_around_sky(
+        coords_small, coords_big, radius*u.arcsec)
+    n_xm_small = len(np.unique(idx_small))
+    idx = np.unique(idx_big)
+    # Get the distribution of matched sources
+    kde_skl_q_m = KernelDensity(bandwidth=bandwidth)
+    kde_skl_q_m.fit(magnitude[idx][:, np.newaxis])
+    pdf_q_m = np.exp(kde_skl_q_m.score_samples(bin_centre[:, np.newaxis]))
+    n_hist_total = pdf_q_m*len(magnitude[idx])/np.sum(pdf_q_m)
+    # Correct probability if there are no sources ## CHECK 
+    if len(magnitude[idx]) == 0:
+        n_hist_total = np.ones_like(n_hist_total)*0.5
+    # Estimate real(m)
+    real_m = n_hist_total - n_xm_small*n_m*np.pi*(radius/3600.)**2
+    # Remove small negative numbers ## CHECK
+    real_m[real_m <= 0.] = 0.
+    return real_m/np.sum(real_m)
 
 def fr(r, sigma):
     """Get the probability related to the spatial distribution"""
