@@ -209,6 +209,7 @@ def get_center(bins):
 def get_n_m(magnitude, bin_list, area):
     """Compute n(m)
     Density of sources per unit of area
+    **Note that the output is cumulative**
     """
     n_hist, _ = np.histogram(magnitude, bin_list)
     return np.cumsum(n_hist)/area
@@ -219,6 +220,7 @@ def get_n_m_kde(magnitude, bin_centre, area, bandwidth=0.2):
     fashion using a KDE.
     For this function we need the centre of the bins instead 
     of the edges.
+    **Note that the output is non-cumulative**
     """
     kde_skl = KernelDensity(bandwidth=bandwidth)
     kde_skl.fit(magnitude[:, np.newaxis])
@@ -228,6 +230,7 @@ def get_n_m_kde(magnitude, bin_centre, area, bandwidth=0.2):
 def get_q_m(magnitude, bin_list, n, n_m, area, radius=5):
     """Compute q(m)
     Normalized probability of a real match
+    **Note that the output is cumulative**
     """
     n_hist_total, _ = np.histogram(magnitude, bin_list)
     # Correct probability if there are no sources
@@ -246,6 +249,7 @@ def get_q_m_kde(magnitude, bin_centre, radius=5, bandwidth=0.2):
     non-cumulative fashion using a KDE.
     For this function we need the centre of the bins instead 
     of the edges.
+    **Note that the output is non-cumulative**
     """
     # Get real(m)
     kde_skl = KernelDensity(bandwidth=bandwidth)
@@ -269,7 +273,7 @@ def estimate_q_m(magnitude, bin_list, n_m, coords_small, coords_big, radius=5):
     # Cross match
     idx_small, idx_big, d2d, d3d = search_around_sky(
         coords_small, coords_big, radius*u.arcsec)
-    n_xm_small = len(np.unique(idx_small))
+    n_small = len(coords_small)
     idx = np.unique(idx_big)
     # Get the distribution of matched sources
     n_hist_total, _ = np.histogram(magnitude[idx], bin_list)
@@ -277,7 +281,8 @@ def estimate_q_m(magnitude, bin_list, n_m, coords_small, coords_big, radius=5):
     if len(magnitude[idx]) == 0:
         n_hist_total = np.ones_like(n_hist_total)*0.5
     # Estimate real(m)
-    real_m = n_hist_total - n_xm_small*n_m*np.pi*(radius/3600.)**2
+    n_m_nocumsum = np.ediff1d(n_m, to_begin=n_m[0])
+    real_m = n_hist_total - n_small*n_m_nocumsum*np.pi*radius**2
     # Remove small negative numbers
     real_m[real_m <= 0.] = 0.
     real_m_cumsum = np.cumsum(real_m)
@@ -295,18 +300,18 @@ def estimate_q_m_kde(magnitude, bin_centre, n_m, coords_small, coords_big, radiu
     # Cross match
     idx_small, idx_big, d2d, d3d = search_around_sky(
         coords_small, coords_big, radius*u.arcsec)
-    n_xm_small = len(np.unique(idx_small))
+    n_small = len(coords_small)
     idx = np.unique(idx_big)
     # Get the distribution of matched sources
     kde_skl_q_m = KernelDensity(bandwidth=bandwidth)
     kde_skl_q_m.fit(magnitude[idx][:, np.newaxis])
     pdf_q_m = np.exp(kde_skl_q_m.score_samples(bin_centre[:, np.newaxis]))
     n_hist_total = pdf_q_m*len(magnitude[idx])/np.sum(pdf_q_m)
-    # Correct probability if there are no sources ## CHECK 
+    # Correct probability if there are no sources ## CHECK
     if len(magnitude[idx]) == 0:
         n_hist_total = np.ones_like(n_hist_total)*0.5
     # Estimate real(m)
-    real_m = n_hist_total - n_xm_small*n_m*np.pi*(radius/3600.)**2
+    real_m = n_hist_total - n_small*n_m*np.pi*radius**2
     # Remove small negative numbers ## CHECK
     real_m[real_m <= 0.] = 0.
     return real_m/np.sum(real_m)
@@ -319,7 +324,6 @@ def fr(r, sigma):
 def fr_u(r, sigma, sigma_maj, sigma_min):
     """Get the probability related to the spatial distribution.
     UPDATED TO NEW FORMULA. MERGE LATER."""
-
     return 0.5/np.pi/sigma_maj/sigma_min*np.exp(-0.5*r**2/(sigma**2))
 
 class SingleMLEstimator(object):
