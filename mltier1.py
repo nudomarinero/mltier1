@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.linalg import det
 from astropy.table import Table
 from astropy import units as u
 from astropy.coordinates import SkyCoord, search_around_sky
@@ -120,13 +121,23 @@ class Q_0(object):
         return (1. - float(nomatch_small)/float(nomatch_random))
     
 ## Error functions
+def R(theta):
+    """Rotation matrix.
+    Input:
+      - theta: angle in degrees
+    """
+    theta_rad = np.deg2rad(theta)
+    c = np.cos(theta_rad)
+    s = np.sin(theta_rad)
+    return np.array([[c, -s], [s, c]])
+
 def get_sigma(maj_error, min_error, pos_angle, 
               radio_ra, radio_dec, 
               opt_ra, opt_dec, opt_ra_err, opt_dec_err, 
-              additonal_error=0.6):
+              additional_error=0.6):
     """
-    Get the combined error between an elongated radio source and an 
-    optical source.
+    Get the covariance matrix between an elongated 
+    radio source and an optical source.
     
     Input:
     * maj_error: error in the major axis of the radio Gaussian in arsecs
@@ -142,20 +153,30 @@ def get_sigma(maj_error, min_error, pos_angle,
         it adds an astrometic error of 0.6 arcsecs.
     
     Output:
-    * sigma: Combined error
+    * sigma: Combined covariance matrix
     """
     factor = 0.60056120439322491 # sqrt(2.0) / sqrt(8.0 * log(2)); see Condon(1997) for derivation of adjustment factor
     majerr = factor * maj_error
     minerr = factor * min_error
+    # angle between the radio and the optical sources
     cosadj = np.cos(np.deg2rad(0.5*(radio_dec + opt_dec)))
     phi = np.arctan2((opt_dec - radio_dec), ((opt_ra - radio_ra)*cosadj))
     # angle from direction of major axis to vector joining LOFAR source and optical source
-    sigma = np.pi/2.0 - phi - np.deg2rad(pos_angle) 
-    loferrsquared  = (majerr * np.cos(sigma))**2 + (minerr * np.sin(sigma))**2
-    opterrsquared  = (opt_ra_err * np.cos(phi))**2 + (opt_dec_err * np.sin(phi))**2
-    return np.sqrt(loferrsquared + opterrsquared + additonal_error**2)
+    alpha = np.pi/2.0 - phi - np.deg2rad(pos_angle) 
+    # Covariance matrices
+    sigma_radio_nr = np.array([[majerr**2, 0], [0, minerr**2]])
+    sigma_optical_nr = np.array([[opt_ra_err**2, 0], [0, opt_dec_err**2]])
+    # Rotate the covariance matrices
+    R_radio = R(alpha)
+    sigma_radio = R_radio @ sigma_radio_nr @ R_radio.T
+    R_optical = R(-phi)
+    sigma_optical = R_optical @ sigma_optical_nr @ R_optical.T
+    # Additional error
+    sigma_additonal_error = np.array([[additional_error**2, 0], [0, additional_error**2]])
+    sigma = sigma_radio + sigma_optical + sigma_additonal_error
+    return sigma
 
-def get_sigma_all(maj_error, min_error, pos_angle, 
+def get_sigma_all_old(maj_error, min_error, pos_angle, 
               radio_ra, radio_dec, 
               opt_ra, opt_dec, opt_ra_err, opt_dec_err, 
               additonal_error=0.6):
@@ -198,6 +219,26 @@ def get_sigma_all(maj_error, min_error, pos_angle,
                    additonal_error**2/2.
                    )
     return np.sqrt(maj_squared + min_squared), np.sqrt(maj_squared), np.sqrt(min_squared)
+
+
+def get_sigma_all(maj_error, min_error, pos_angle, 
+              radio_ra, radio_dec, 
+              opt_ra, opt_dec, opt_ra_err, opt_dec_err, 
+              additional_error=0.6):
+    """Apply the get_sigma function in parallel and return the determinant of 
+    the covariance matrix and its [1,1] term (or [0,0] in Python)
+    """
+    n = len(opt_ra)
+    det_sigma = np.empty(n)
+    sigma_0_0 = np.empty(n)
+    for i in range(n):
+        sigma = get_sigma(maj_error, min_error, pos_angle, 
+              radio_ra, radio_dec, 
+              opt_ra[i], opt_dec[i], opt_ra_err[i], opt_dec_err[i], 
+              additional_error=additional_error)
+        det_sigma[i] = det(sigma)
+        sigma_0_0[i] = sigma[0,0]
+    return sigma_0_0, det_sigma
 
 ## ML functions
 def get_center(bins):
@@ -318,10 +359,13 @@ def estimate_q_m_kde(magnitude, bin_centre, n_m, coords_small, coords_big, radiu
 
 def fr(r, sigma):
     """Get the probability related to the spatial distribution"""
-    s2 = sigma**2
-    return 0.5/np.pi/s2*np.exp(-0.5*r**2/s2)
+    return 0.5/np.pi/det(sigma)*np.exp(-0.5*r**2/sigma[0,0])
 
-def fr_u(r, sigma, sigma_maj, sigma_min):
+def fr_u(r, sigma_0_0, det_sigma):
+    """Get the probability related to the spatial distribution"""
+    return 0.5/np.pi/det_sigma*np.exp(-0.5*r**2/sigma_0_0)
+
+def fr_u_old(r, sigma, sigma_maj, sigma_min):
     """Get the probability related to the spatial distribution.
     UPDATED TO NEW FORMULA. MERGE LATER."""
     return 0.5/np.pi/sigma_maj/sigma_min*np.exp(-0.5*r**2/(sigma**2))
@@ -345,14 +389,13 @@ class SingleMLEstimator(object):
         """Get n(m)"""
         return np.interp(m, self.center, self.n_m)
     
-    def __call__(self, m, r, sigma):
+    def __call__(self, m, r, sigma_0_0, det_sigma):
         """Get the likelihood ratio"""
-        return fr(r, sigma) * self.get_qm(m) / self.get_nm(m)
+        return fr_u(r, sigma_0_0, det_sigma) * self.get_qm(m) / self.get_nm(m)
 
-class SingleMLEstimatorU(object):
+class SingleMLEstimatorOld(object):
     """
-    Class to estimate the Maximum Likelihood ratio.
-    UPDATED TO NEW FORMULA. MERGE LATER.
+    Class to estimate the Maximum Likelihood ratio
     """
     def __init__(self, q0, n_m, q_m, center):
         self.q0 = q0
@@ -371,8 +414,8 @@ class SingleMLEstimatorU(object):
     
     def __call__(self, m, r, sigma, sigma_maj, sigma_min):
         """Get the likelihood ratio"""
-        return fr_u(r, sigma, sigma_maj, sigma_min) * self.get_qm(m) / self.get_nm(m)
-
+        return fr_u_old(r, sigma, sigma_maj, sigma_min) * self.get_qm(m) / self.get_nm(m)
+    
 class MultiMLEstimator(object):
     """
     Class to estimate the Maximum Likelihood ratio in a vectorized 
@@ -403,15 +446,14 @@ class MultiMLEstimator(object):
         """
         return np.vectorize(self.get_nm)(m, k)
     
-    def __call__(self, m, r, sigma, k):
+    def __call__(self, m, r, sigma_0_0, det_sigma, k):
         """Get the likelihood ratio"""
-        return fr(r, sigma) * self.get_qm_vect(m, k) / self.get_nm_vect(m, k)
+        return fr_u(r, sigma_0_0, det_sigma) * self.get_qm_vect(m, k) / self.get_nm_vect(m, k)
 
-class MultiMLEstimatorU(object):
+class MultiMLEstimatorOld(object):
     """
     Class to estimate the Maximum Likelihood ratio in a vectorized 
     fashion.
-    UPDATED TO NEW FORMULA. MERGE LATER.
     """
     def __init__(self, q0, n_m, q_m, center):
         self.q0 = q0
@@ -440,8 +482,8 @@ class MultiMLEstimatorU(object):
     
     def __call__(self, m, r, sigma, sigma_maj, sigma_min, k):
         """Get the likelihood ratio"""
-        return fr_u(r, sigma, sigma_maj, sigma_min) * self.get_qm_vect(m, k) / self.get_nm_vect(m, k)
-
+        return fr_u_old(r, sigma, sigma_maj, sigma_min) * self.get_qm_vect(m, k) / self.get_nm_vect(m, k)
+    
 def q0_min_level(q_0_list, min_level=0.001):
     """Ensures that the minimum value of the Q_0 for each bin is always 
     above a minimum threshold
