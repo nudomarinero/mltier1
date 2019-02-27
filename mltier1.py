@@ -162,7 +162,7 @@ def get_sigma(maj_error, min_error, pos_angle,
     cosadj = np.cos(np.deg2rad(0.5*(radio_dec + opt_dec)))
     phi = np.arctan2(((opt_ra - radio_ra)*cosadj), (opt_dec - radio_dec))
     # angle from direction of major axis to vector joining LOFAR source and optical source
-    alpha = np.deg2rad(pos_angle) - phi
+    alpha = phi - np.deg2rad(pos_angle)
     # Covariance matrices
     sigma_radio_nr = np.array([[majerr**2, 0], [0, minerr**2]])
     sigma_optical_nr = np.array([[opt_dec_err**2, 0], [0, opt_ra_err**2]])
