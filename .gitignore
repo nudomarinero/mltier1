@@ -60,6 +60,6 @@ Session.vim
 # Assorted
 notes.txt
 .ipynb_checkpoints/*
-
+*.fits
 
 
